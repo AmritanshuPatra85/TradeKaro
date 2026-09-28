@@ -1,0 +1,10 @@
+{
+  "name": "TradeKaro",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev:api": "pnpm --filter @tradekaro/api dev",
+    "dev:worker": "pnpm --filter @tradekaro/worker dev",
+    "dev:web": "pnpm --filter web dev"
+  }
+}

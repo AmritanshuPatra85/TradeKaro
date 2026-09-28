@@ -1,0 +1,26 @@
+{
+    "name": "@tradekaro/worker",
+    "version": "0.0.1",
+    "private": true,
+    "scripts": {
+        "dev": "tsx watch src/index.ts",
+        "build": "tsc -p tsconfig.json",
+        "start": "node dist/index.js",
+        "set-session": "tsx src/scripts/set-session-token.ts"
+    },
+    "dependencies": {
+        "@supabase/supabase-js": "^2.117.2",
+        "@tradekaro/shared": "workspace:*",
+        "adm-zip": "^0.6.1",
+        "breezeconnect": "^1.0.31",
+        "dotenv": "^16.4.5",
+        "ioredis": "^6.0.0",
+        "ws": "^8.21.3"
+    },
+    "devDependencies": {
+        "@types/node": "^20.14.15",
+        "@types/ws": "^8.18.1",
+        "tsx": "^4.16.5",
+        "typescript": "^5.5.4"
+    }
+}
