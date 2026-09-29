@@ -1,515 +1,236 @@
-````markdown
 # TradeKaro
 
-### Live Multi-Asset Paper Trading Platform
+### Real-Time Multi-Asset Paper Trading Platform
 
-TradeKaro is a live, multi-asset **paper-trading platform** where users trade Indian stocks and cryptocurrency using virtual money against real-time market data.
+TradeKaro is a full-stack paper-trading platform where users trade **Indian stocks and cryptocurrency with virtual money** using live market data.
 
-Users can place market orders, manage portfolios and watchlists, view live P&L, analyze candlestick charts, and compete on real-time leaderboards.
+Users can place market orders, track live portfolio P&L, build watchlists, view candlestick charts, and compete on real-time leaderboards.
 
-Built solo as a full-stack and DevOps project, covering real-time market-data ingestion, an atomic order-execution engine, WebSocket communication, Redis-based event processing, containerized deployment, and a separately hosted frontend.
+Built from scratch as a full-stack + DevOps project.
 
-**Live Demo:** https://trade-karo-one.vercel.app  
-**API Health:** https://3-108-151-28.sslip.io/health  
-**Author:** [Amritanshu Patra](https://github.com/AmritanshuPatra85) · [Portfolio](https://amritanshupatra.in)
+<p align="center">
+  <a href="https://trade-karo-one.vercel.app">
+    <strong>🚀 Live Demo</strong>
+  </a>
+  &nbsp;&nbsp;•&nbsp;&nbsp;
+  <a href="https://3-108-151-28.sslip.io/health">
+    API
+  </a>
+  &nbsp;&nbsp;•&nbsp;&nbsp;
+  <a href="https://github.com/AmritanshuPatra85">
+    GitHub
+  </a>
+</p>
 
-> TradeKaro uses virtual money only. It is a paper-trading simulation and is not a brokerage or financial-advisory platform.
+> **Paper trading only.** TradeKaro uses virtual money and does not execute real financial transactions.
 
 ---
 
-## Features
+## What You Can Do
 
-### Multi-Asset Trading
-
-- **NSE stocks** through ICICI Direct's Breeze API
-- **20 cryptocurrency pairs** through Binance's public WebSocket
-- Unified interface for both asset classes
-- Market-specific trading rules
-
-### Real-Time Market Data
-
-A single normalized price-feed pipeline streams live market ticks from multiple providers.
-
-- Breeze → NSE market data
-- Binance WebSocket → crypto market data
-- Redis Pub/Sub → internal event distribution
-- Socket.IO → browser updates
-
-### Atomic Market Orders
-
-Market orders are validated and executed atomically through a PostgreSQL function.
-
-The execution flow handles:
-
-- Balance validation
-- Quantity validation
-- Symbol validation
-- NSE market-hours validation
-- Order creation
-- Trade creation
-- Holdings updates
-- Portfolio updates
-
-All related database operations occur within a single transaction.
-
-### Portfolio & History
-
-Users can track:
-
-- Current holdings
-- Available balance
-- Portfolio value
-- Realized and unrealized P&L
-- Trade history
-- Portfolio value history
-
-### Live Leaderboards
-
-TradeKaro includes:
-
-- Global live leaderboard
-- Private leaderboard rooms
-- Room creation and joining
-- Real-time portfolio-based rankings
-
-Redis Sorted Sets are used to maintain leaderboard state.
-
-### Watchlists & Charts
-
-- Personalized watchlists
-- 1-minute candlestick charts
-- Persisted candle data
-- Live market-price updates
-
-### Authentication
-
-Google sign-in is handled through **Supabase Auth**, with authenticated API routes protected using Supabase access tokens.
+- 📈 Trade **NSE stocks** using live market data
+- ₿ Trade **20 cryptocurrency pairs**
+- ⚡ Receive **real-time price updates**
+- 💰 Place and track market orders
+- 📊 Monitor portfolio value and P&L
+- ⭐ Create personalized watchlists
+- 🕯️ View 1-minute candlestick charts
+- 🏆 Compete on a live global leaderboard
+- 👥 Create and join private leaderboard rooms
+- 🔐 Sign in with Google
 
 ---
 
 ## Architecture
 
-```mermaid
+mermaid
 flowchart LR
-    B1[Breeze API - NSE] --> W[Market Data Worker]
-    B2[Binance WebSocket - Crypto] --> W
+    B[Breeze API<br/>NSE] --> W[Market Data Worker]
+    BN[Binance WebSocket<br/>Crypto] --> W
 
-    W -->|Price ticks + latest prices| R[(Redis)]
+    W --> R[(Redis)]
+    R --> A[Express API<br/>+ Socket.IO]
 
-    R --> A[Express API + Socket.IO]
+    A <--> DB[(Supabase<br/>PostgreSQL)]
 
-    A <--> DB[(Supabase PostgreSQL)]
-
-    U[Browser - Next.js on Vercel] -->|HTTPS + WebSocket| C[Caddy]
+    U[Next.js<br/>Vercel] <-->|HTTPS / WebSocket| C[Caddy]
     C --> A
-````
+How it works
 
-### Data Flow
+Market data from Breeze and Binance enters a single ingestion pipeline.
 
-The market-data worker connects to both Breeze and Binance, normalizes incoming ticks into a common `PriceTick` structure, and publishes them through Redis.
+The worker normalizes both feeds into a common PriceTick format and publishes updates through Redis.
 
-The API consumes those events and broadcasts relevant updates to connected browsers through Socket.IO.
+The API consumes those events and pushes live prices to connected clients through Socket.IO.
 
-The API also reads the latest available prices when executing orders.
+When a user places an order, the latest market price is retrieved and the entire portfolio update is executed atomically inside PostgreSQL.
 
-Persistent application state is stored in Supabase PostgreSQL, including:
+Market Data
+     ↓
+Worker
+     ↓
+Redis
+     ↓
+Express API
+     ↓
+PostgreSQL
+     ↓
+Socket.IO
+     ↓
+Browser
+Engineering Highlights
+Atomic Order Execution
 
-* Users
-* Portfolios
-* Holdings
-* Orders
-* Trades
-* Candles
+Orders are executed through a PostgreSQL function:
 
-Redis additionally provides price caching, Pub/Sub, and leaderboard state.
+execute_market_order
 
----
+Balance validation, holdings updates, order creation, trade creation, and portfolio updates happen within a single database transaction.
 
-## Tech Stack
+This prevents partial state updates when multiple orders are processed concurrently.
 
-| Layer              | Technology                                                  |
-| ------------------ | ----------------------------------------------------------- |
-| Frontend           | Next.js 16, React 19, TypeScript, Tailwind CSS 4, shadcn/ui |
-| Charts             | lightweight-charts                                          |
-| Real-Time Client   | Socket.IO Client                                            |
-| API                | Node.js 22, Express, TypeScript                             |
-| Real-Time Backend  | Socket.IO                                                   |
-| Worker             | Node.js, TypeScript, `ws`, Breeze API client                |
-| Database           | PostgreSQL via Supabase                                     |
-| Cache / Events     | Redis 7                                                     |
-| Authentication     | Supabase Auth                                               |
-| Containers         | Docker, Docker Compose                                      |
-| Reverse Proxy      | Caddy                                                       |
-| Backend Hosting    | AWS EC2                                                     |
-| Frontend Hosting   | Vercel                                                      |
-| Package Management | pnpm Workspaces                                             |
+Unified Market Data
 
----
+NSE and cryptocurrency feeds are normalized into the same internal structure:
 
-## Repository Structure
+PriceTick {
+  symbol
+  market
+  price
+  timestamp
+}
 
-```text
+The rest of the system therefore doesn't need to know which provider produced a price.
+
+Real-Time Architecture
+
+Redis handles:
+
+Price caching
+Pub/Sub
+Leaderboard state
+
+Socket.IO handles:
+
+Live price updates
+Portfolio updates
+Leaderboard updates
+
+The frontend doesn't rely on continuous HTTP polling for live market data.
+
+Financial Precision
+
+Financial values use high-precision PostgreSQL numeric types such as:
+
+numeric(28,10)
+
+This is particularly important for low-priced cryptocurrency assets.
+
+Production Deployment
+
+The backend is containerized and deployed on AWS EC2.
+
+Caddy
+  │
+  ├── API
+  ├── Worker
+  └── Redis
+
+Caddy handles HTTPS and reverse proxying, while the Next.js frontend is deployed independently on Vercel.
+
+Tech Stack
+
+Frontend
+
+Next.js 16 · React 19 · TypeScript · Tailwind CSS 4 · shadcn/ui · lightweight-charts
+
+Backend
+
+Node.js 22 · Express · TypeScript · Socket.IO
+
+Data
+
+PostgreSQL · Supabase · Redis 7
+
+Market Data
+
+ICICI Direct Breeze API · Binance WebSocket
+
+Infrastructure
+
+Docker · Docker Compose · Caddy · AWS EC2 · Vercel
+
+Tooling
+
+pnpm Workspaces
+
+Project Structure
 TradeKaro/
 │
 ├── apps/
-│   ├── api/
-│   │   ├── src/
-│   │   │   ├── routes/
-│   │   │   ├── realtime/
-│   │   │   ├── leaderboard/
-│   │   │   ├── fx/
-│   │   │   └── index.ts
-│   │   └── package.json
-│   │
-│   ├── worker/
-│   │   └── ...
-│   │
-│   └── web/
-│       └── ...
+│   ├── api/          # Express API + Socket.IO
+│   ├── worker/       # Market-data ingestion
+│   └── web/          # Next.js frontend
 │
 ├── packages/
-│   └── shared/
-│       ├── src/
-│       └── package.json
+│   └── shared/       # Shared types & schemas
 │
-├── supabase/
-│   └── ...
+├── supabase/         # Database schema & functions
 │
 ├── docker-compose.yml
 ├── docker-compose.prod.yml
 ├── Caddyfile
-├── package.json
-├── pnpm-workspace.yaml
-└── README.md
-```
-
----
-
-## Notable Engineering Decisions
-
-### Atomic Order Execution
-
-Order execution is implemented through a single PostgreSQL function:
-
-```text
-execute_market_order
-```
-
-Instead of performing multiple independent application-level queries, the database handles the balance, holdings, order, trade, and portfolio updates atomically.
-
-This prevents partial updates and reduces the risk of inconsistent portfolio state during concurrent orders.
-
-### Unified Price Feed
-
-Both stock and cryptocurrency market data are normalized into the same internal `PriceTick` representation.
-
-```text
-symbol
-market
-price
-timestamp
-```
-
-This allows downstream systems to remain independent of the original market-data provider.
-
-### Feed-Wide Staleness Detection
-
-TradeKaro uses a feed-wide staleness heartbeat rather than enforcing a strict age limit on every individual symbol.
-
-This avoids incorrectly rejecting orders for assets that naturally receive fewer ticks.
-
-### High-Precision Financial Values
-
-Financial values use wide PostgreSQL numeric columns such as:
-
-```text
-numeric(28,10)
-```
-
-This provides sufficient precision for low-priced cryptocurrency assets where standard decimal precision can be insufficient.
-
-### TypeScript Monorepo
-
-The project uses pnpm workspaces with shared types and schemas in:
-
-```text
-packages/shared
-```
-
-This allows the API, worker, and frontend to share common domain types.
-
-### Caddy for HTTPS
-
-Caddy acts as the production reverse proxy and automatically manages TLS certificates through Let's Encrypt.
-
-Only the reverse proxy is publicly exposed while the application services remain internal to the Docker network.
-
-### Independent Frontend Deployment
-
-The Next.js frontend is isolated under `apps/web`, allowing it to be deployed independently to Vercel.
-
----
-
-## API
-
-### Public Endpoints
-
-| Method | Route             | Auth | Purpose                   |
-| ------ | ----------------- | ---- | ------------------------- |
-| `GET`  | `/health`         | No   | API health check          |
-| `GET`  | `/market/candles` | No   | Retrieve 1-minute candles |
-
-### Trading
-
-| Method | Route     | Auth | Purpose                |
-| ------ | --------- | ---- | ---------------------- |
-| `POST` | `/orders` | Yes  | Place a market order   |
-| `GET`  | `/trades` | Yes  | Retrieve trade history |
-
-### Portfolio
-
-| Method | Route                | Auth | Purpose                          |
-| ------ | -------------------- | ---- | -------------------------------- |
-| `GET`  | `/portfolio`         | Yes  | Retrieve portfolio and holdings  |
-| `GET`  | `/portfolio/history` | Yes  | Retrieve portfolio value history |
-
-### Watchlist
-
-| Method   | Route        | Auth | Purpose              |
-| -------- | ------------ | ---- | -------------------- |
-| `GET`    | `/watchlist` | Yes  | Retrieve watchlist   |
-| `POST`   | `/watchlist` | Yes  | Add an instrument    |
-| `DELETE` | `/watchlist` | Yes  | Remove an instrument |
-
-### Leaderboard
-
-| Method | Route                        | Auth | Purpose                 |
-| ------ | ---------------------------- | ---- | ----------------------- |
-| `GET`  | `/leaderboard`               | Yes  | Global leaderboard      |
-| `GET`  | `/leaderboard/rooms`         | Yes  | List private rooms      |
-| `POST` | `/leaderboard/rooms`         | Yes  | Create a private room   |
-| `POST` | `/leaderboard/rooms/join`    | Yes  | Join a private room     |
-| `GET`  | `/leaderboard/rooms/:roomId` | Yes  | Retrieve room standings |
-
-Authenticated routes expect a Supabase access token in the `Authorization` header.
-
-Real-time market and leaderboard updates are delivered through Socket.IO.
-
----
-
-## Running Locally
-
-### Prerequisites
-
-* Node.js 22
-* pnpm 10
-* Docker
-* Docker Compose
-* Supabase project
-* ICICI Direct account with Breeze API access for NSE market data
-
-### Clone the Repository
-
-```powershell
+└── pnpm-workspace.yaml
+Running Locally
+Requirements
+Node.js 22
+pnpm
+Docker
+Supabase project
+ICICI Direct Breeze API access
+Setup
 git clone https://github.com/AmritanshuPatra85/TradeKaro.git
 cd TradeKaro
-```
-
-### Install Dependencies
-
-```powershell
 pnpm install
-```
-
-### Configure Environment
-
-```powershell
 Copy-Item .env.example .env
-```
-
-Fill in the required environment variables.
-
-### Start Redis
-
-```powershell
 docker compose up -d
-```
 
-### Configure Breeze Session
+Configure the environment variables in .env, then start the services:
 
-The Breeze session token must be refreshed for the current trading session:
-
-```powershell
-pnpm --filter @tradekaro/worker set-session
-```
-
-### Start the API
-
-```powershell
 pnpm --filter @tradekaro/api dev
-```
-
-API:
-
-```text
-http://localhost:4000
-```
-
-### Start the Worker
-
-```powershell
 pnpm --filter @tradekaro/worker dev
-```
-
-### Start the Frontend
-
-```powershell
 pnpm --filter web dev
-```
 
 Frontend:
 
-```text
 http://localhost:3000
-```
 
----
+API:
 
-## Environment Variables
+http://localhost:4000
 
-### Backend
+Deployment
+Backend
 
-| Variable                    | Purpose                      |
-| --------------------------- | ---------------------------- |
-| `DATABASE_URL`              | PostgreSQL connection string |
-| `SUPABASE_URL`              | Supabase project URL         |
-| `SUPABASE_ANON_KEY`         | Supabase public API key      |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server-side Supabase access  |
-| `REDIS_URL`                 | Redis connection URL         |
-| `BREEZE_API_KEY`            | ICICI Breeze API key         |
-| `BREEZE_API_SECRET`         | ICICI Breeze API secret      |
-| `BREEZE_SESSION_TOKEN`      | Current Breeze session token |
-| `PORT`                      | API port                     |
-| `API_DOMAIN`                | Production API hostname      |
+Deployed on AWS EC2 using Docker Compose.
 
-### Frontend
+Frontend
 
-```text
-NEXT_PUBLIC_API_URL
-NEXT_PUBLIC_SUPABASE_URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY
-```
+Deployed on Vercel.
 
-> Never expose the Supabase service-role key or Breeze credentials to the frontend.
+Database
 
----
+Hosted on Supabase PostgreSQL.
 
-## Deployment
+Redis
 
-### Backend — AWS EC2
+Runs as part of the production Docker stack.
 
-The production backend runs on AWS EC2 using Docker Compose.
+Current Limitations
+Breeze session tokens require daily refresh.
+NSE trading follows market hours.
+Crypto markets operate 24/7.
+Only 1-minute candles are currently persisted.
+Production currently runs on a single EC2 instance.
 
-The production stack contains:
 
-```text
-Caddy
-   │
-   ├── API
-   ├── Worker
-   └── Redis
-```
-
-Caddy is the only publicly exposed application service and handles HTTPS termination.
-
-Deploy with:
-
-```bash
-docker compose -f docker-compose.prod.yml up -d --build
-```
-
-The API is available through the configured `API_DOMAIN`.
-
-### Frontend — Vercel
-
-The Next.js application is deployed separately to Vercel.
-
-Configure the following environment variables:
-
-```text
-NEXT_PUBLIC_API_URL
-NEXT_PUBLIC_SUPABASE_URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY
-```
-
-Because these values are exposed to the Next.js client bundle, changing them requires a frontend redeployment.
-
----
-
-## Known Limitations
-
-* The Breeze session token expires daily and must be refreshed for each trading day.
-* NSE equities are restricted to market hours.
-* Cryptocurrency markets operate continuously.
-* Only 1-minute candles are currently persisted and charted.
-* The production deployment currently runs as a single EC2 instance.
-* There is currently no horizontal scaling or high-availability setup.
-
----
-
-## Testing & Load Simulation
-
-TradeKaro includes a synthetic load-test simulator:
-
-```text
-apps/api/src/scripts/loadtest-sim.ts
-```
-
-The simulator generates concurrent users and order activity to exercise:
-
-* Order execution
-* Portfolio updates
-* Market-price processing
-* Redis event distribution
-* Real-time Socket.IO fan-out
-* Leaderboard updates
-
-This was used to validate the real-time trading architecture under simulated multi-user activity.
-
----
-
-## Project Status
-
-TradeKaro is a completed portfolio project demonstrating end-to-end development and deployment of a real-time financial simulation platform.
-
-The project covers:
-
-* Full-stack TypeScript development
-* Real-time market-data ingestion
-* REST API design
-* WebSocket communication
-* Redis Pub/Sub
-* Atomic database transactions
-* Authentication
-* Financial data handling
-* Docker containerization
-* Reverse-proxy and TLS configuration
-* AWS EC2 deployment
-* Vercel deployment
-* Load testing
-
----
-
-## Disclaimer
-
-TradeKaro is a **paper-trading simulation** built for educational and demonstration purposes.
-
-It uses virtual money and does not execute real financial transactions.
-
-Nothing on this platform constitutes financial advice.
-
-```
-```
-
- 
- 
