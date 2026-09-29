@@ -73,11 +73,15 @@ export function attachRealtime(httpServer: HttpServer): Server {
       recordPortfolioDeliveries(io.sockets.adapter.rooms.get(room)?.size ?? 0);
       io.to(room).emit("portfolio", snapshot);
     },
+    emitLeaderboard: (snapshot) => {
+      io.to("leaderboard").emit("leaderboard", snapshot);
+    },
   });
 
   io.on("connection", (socket) => {
     const userId = socket.data.userId as string;
     console.log(`[realtime] client connected (${io.engine.clientsCount} total)`);
+    void socket.join("leaderboard");
 
     // The room name comes from the verified token, so a client can only ever
     // receive its own portfolio. Then send the first snapshot.

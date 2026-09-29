@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "test": "tsx --test src/fx/provider.test.ts src/routes/market.test.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js"
   },

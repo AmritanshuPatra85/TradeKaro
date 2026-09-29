@@ -41,12 +41,14 @@ async function main() {
   await sleep(1500);
   const lb = await call("/leaderboard?limit=20", tA);
   check("leaderboard responds", lb.status === 200);
+  check("leaderboard base currency is INR", lb.json?.base_currency === "INR");
+  check("leaderboard carries a USDT/INR quote", lb.json?.fx_rate?.base === "USDT" && lb.json?.fx_rate?.quote === "INR");
   check("you is present with a rank", lb.json?.you && Number.isInteger(lb.json.you.rank), `rank ${lb.json?.you?.rank}`);
   check("at least 2 users ranked", (lb.json?.total_users ?? 0) >= 2, `${lb.json?.total_users} users`);
 
-  const pcts: number[] = (lb.json?.leaderboard ?? []).map((e: any) => e.pnl_pct);
-  const sorted = pcts.every((v, i) => i === 0 || pcts[i - 1] >= v);
-  check("entries sorted by pnl_pct descending", sorted, `${pcts.length} rows`);
+  const pnls: number[] = (lb.json?.leaderboard ?? []).map((e: any) => e.pnl);
+  const sorted = pnls.every((v, i) => i === 0 || pnls[i - 1] >= v);
+  check("entries sorted by INR pnl descending", sorted, `${pnls.length} rows`);
 
   const one = await call("/leaderboard?limit=1", tA);
   check("limit=1 returns one row", one.json?.leaderboard?.length === 1);
@@ -65,6 +67,9 @@ async function main() {
 
   // Consistency: leaderboard total vs GET /portfolio, allowing for price movement in between.
   const pf = await call("/portfolio", tA);
+  check("portfolio base currency is INR", pf.json?.base_currency === "INR");
+  check("crypto portfolio quote currency is USDT", (pf.json?.holdings ?? []).filter((h: any) => h.market === "CRYPTO").every((h: any) => h.quote_currency === "USDT"));
+  check("crypto holding values are exposed in INR", (pf.json?.holdings ?? []).filter((h: any) => h.market === "CRYPTO").every((h: any) => Number.isFinite(h.avg_cost_inr) && Number.isFinite(h.value) && Number.isFinite(h.unrealized_pnl)));
   const lbNow = await call("/leaderboard?limit=1", tA);
   const diff = Math.abs((pf.json?.total_value ?? 0) - (lbNow.json?.you?.total_value ?? 0));
   check("leaderboard total matches /portfolio (within 100)", diff < 100, `diff ${diff.toFixed(2)}`);

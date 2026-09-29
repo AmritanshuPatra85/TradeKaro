@@ -60,6 +60,7 @@ router.get("/trades", requireAuth, async (req: AuthedRequest, res: Response) => 
       order_id: t.order_id,
       symbol: t.symbol,
       market: t.market,
+      quote_currency: t.market === "CRYPTO" ? "USDT" : "INR",
       side: t.side,
       quantity,
       fill_price: fillPrice,

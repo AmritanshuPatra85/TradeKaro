@@ -15,3 +15,12 @@ export const CandleSchema = z.object({
   close: z.number(),
 });
 export type Candle = z.infer<typeof CandleSchema>;
+
+
+export const CandleResponseSchema = z.object({
+  market: MarketSchema,
+  symbol: z.string(),
+  timeframe: TimeframeSchema,
+  candles: z.array(CandleSchema),
+});
+export type CandleResponse = z.infer<typeof CandleResponseSchema>;

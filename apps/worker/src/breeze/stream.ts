@@ -51,6 +51,10 @@ export function connectBreezeStream(): void {
   }
 }
 
+export function disconnectBreezeStream(): void {
+  getBreezeClient().wsDisconnect();
+}
+
 // Breeze payload: { symbol: "4.1!<token>", last, open, high, low, close,
 // change (percent), ltt (IST string, no tz), ttq, ... }
 function normalizeTick(raw: unknown): PriceTick | null {

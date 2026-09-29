@@ -115,7 +115,7 @@ async function main() {
 
   // Dynamic imports so they run after dotenv has loaded the environment.
   const { redis } = await import("../redis");
-  const { getLatestPrice } = await import("@tradekaro/shared");
+  const { getLatestPrice, getFeedHeartbeatAgeMs } = await import("@tradekaro/shared");
   const { io } = await import("socket.io-client");
 
   if (!fs.existsSync(USERS_FILE)) throw new Error(`${USERS_FILE} not found. Run loadtest-seed.ts first.`);
@@ -161,15 +161,21 @@ async function main() {
       const l = await getLatestPrice(redis, "CRYPTO", s);
       if (l) {
         live.set(s, l.price);
-        if (Date.now() - l.timestamp < 15000) fresh++;
+        fresh++;
       }
     }
     return fresh;
   };
   const freshCount = await refreshPrices();
+  const hbAge = await getFeedHeartbeatAgeMs(redis, "CRYPTO");
+  if (hbAge === null || hbAge > 15000) {
+    throw new Error(
+      "crypto feed heartbeat is missing or older than 15s. Restart pnpm dev:worker (it needs the updated publish.ts) and check it is running."
+    );
+  }
   if (freshCount < CRYPTO_SYMBOLS.length) {
     throw new Error(
-      `only ${freshCount}/${CRYPTO_SYMBOLS.length} crypto symbols have a fresh price. Is pnpm dev:worker running?`
+      `only ${freshCount}/${CRYPTO_SYMBOLS.length} crypto symbols have a cached price. Is pnpm dev:worker running?`
     );
   }
 

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { redis } from "../redis";
 import { PNL_KEY, ENTRIES_KEY, type LeaderboardEntry } from "../leaderboard/engine";
 import { requireAuth, type AuthedRequest } from "../middleware/auth";
+import { getUsdtInrRate } from "../fx/rate";
 import type { Response } from "express";
 
 const router = Router();
@@ -39,7 +40,11 @@ router.get("/leaderboard", requireAuth, async (req: AuthedRequest, res: Response
   }
 
   const totalUsers = await redis.zcard(PNL_KEY);
-  return res.json({ leaderboard, you, total_users: totalUsers });
+  const fxRate = await getUsdtInrRate();
+  if (!fxRate) {
+    return res.status(503).json({ error: "USDT/INR conversion quote is unavailable or stale; leaderboard valuation is temporarily unavailable" });
+  }
+  return res.json({ base_currency: "INR", fx_rate: fxRate, leaderboard, you, total_users: totalUsers });
 });
 
 export default router;
